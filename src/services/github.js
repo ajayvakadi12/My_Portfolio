@@ -75,7 +75,7 @@ export const fetchGitHubStats = async () => {
     let totalContributions = null;
 
     try {
-      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const backendUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
       const calendarRes = await fetch(`${backendUrl}/api/github/calendar?username=${GITHUB_USERNAME}`);
       if (calendarRes.ok) {
         const calData = await calendarRes.json();
@@ -94,7 +94,7 @@ export const fetchGitHubStats = async () => {
       const weeks = generateFallbackHeatmap(reposData);
       contributionCalendar = {
         weeks,
-        totalContributions: weeks.reduce((sum, w) => 
+        totalContributions: weeks.reduce((sum, w) =>
           sum + w.contributionDays.reduce((dSum, d) => dSum + d.contributionCount, 0), 0
         )
       };
@@ -123,7 +123,7 @@ export const fetchGitHubStats = async () => {
         timestamp: Date.now(),
         data: result
       }));
-    } catch (e) {}
+    } catch (e) { }
 
     return result;
   } catch (error) {
@@ -137,7 +137,7 @@ export const fetchGitHubStats = async () => {
 function generateFallbackHeatmap(repos = []) {
   const weeks = [];
   const today = new Date();
-  
+
   // Use repo push timestamps as seeds for active weeks
   const activeWeekIndexes = new Set();
   repos.forEach(repo => {
@@ -167,9 +167,9 @@ function generateFallbackHeatmap(repos = []) {
         date: new Date(today.getTime() - ((51 - w) * 7 + (6 - d)) * 86400000).toISOString().split('T')[0],
         contributionCount: count,
         color: count === 0 ? 'rgba(148, 163, 184, 0.08)' :
-               count < 2 ? '#0e4429' :
-               count < 4 ? '#006d32' :
-               count < 6 ? '#26a641' : '#39d353'
+          count < 2 ? '#0e4429' :
+            count < 4 ? '#006d32' :
+              count < 6 ? '#26a641' : '#39d353'
       });
     }
     weeks.push({ contributionDays: days });
