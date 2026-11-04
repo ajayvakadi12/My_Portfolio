@@ -1,0 +1,88 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import contactRoutes from './routes/contactRoutes.js';
+import { apiLimiter } from './middleware/rateLimiter.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Permitted origins for CORS
+const isAllowedOrigin = (origin) => {
+  // Allow requests with no origin (curl, server-to-server, Postman, health checks)
+  if (!origin) return true;
+
+  // Allow all local dev hosts and ports (localhost, 127.0.0.1)
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    return true;
+  }
+
+  // Allow Vercel production and preview deployments
+  if (origin.endsWith('.vercel.app')) {
+    return true;
+  }
+
+  // Allow explicitly configured CLIENT_URL if set
+  if (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) {
+    return true;
+  }
+
+  return false;
+};
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+app.use(express.json({ limit: '50kb' }));
+app.use(express.urlencoded({ extended: true, limit: '50kb' }));
+
+// Apply general API rate limit to all /api routes
+app.use('/api', apiLimiter);
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// API Routes
+app.use('/api', contactRoutes);
+
+// Catch-all 404 handler
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'API route not found' });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled server error:', err.message);
+  res.status(500).json({
+    success: false,
+    message: err.message || 'Internal server error',
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 Ajay Vakadi Portfolio Backend running on port ${PORT}`);
+  console.log(`🔗 Health check available at http://localhost:${PORT}/api/health`);
+});
+
